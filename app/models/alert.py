@@ -29,7 +29,6 @@ class AlertStatus(str, Enum):
 class IncomingAlert(BaseModel):
     """
     Payload exacto que el parser envía a jug-eared.
-    Campos según _send_normalized_alert en processor.py del parser.
     """
     alert_id: str
     source_type: AlertSource
