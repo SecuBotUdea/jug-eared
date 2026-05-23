@@ -1,7 +1,7 @@
 import logging
 import httpx
 from app.config import settings
-from app.db.repository import InMemoryTeamRepository
+from app.db.repository import MongoTeamRepository
 from app.models.alert import IncomingAlert
 from app.models.notification import DiscordNotification
 
@@ -18,7 +18,7 @@ def extract_repository(alert_id: str) -> str:
     return "-".join(parts[1:-1])
 
 
-async def route_alert(alert: IncomingAlert, repo: InMemoryTeamRepository) -> None:
+async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
     repository = extract_repository(alert.alert_id)
     team = await repo.get_by_repository(repository)
 
