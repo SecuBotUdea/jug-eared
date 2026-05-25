@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 
-x|
 class Settings(BaseSettings):
     secubot_url: str
     discord_url: str
