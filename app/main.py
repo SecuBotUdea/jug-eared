@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from app.api.routes.alerts import router as alerts_router
 from app.api.routes.registry import router as registry_router
 from app.api.routes.rescan import router as rescan_router
+from app.api.routes.status_change import router as status_change_router
+from app.api.routes.gamification import router as gamification_router
 from app.db.repository import connect, disconnect
 
 
@@ -23,6 +25,8 @@ app = FastAPI(
 app.include_router(alerts_router)
 app.include_router(registry_router)
 app.include_router(rescan_router)
+app.include_router(status_change_router)
+app.include_router(gamification_router)
 
 
 @app.get("/health")
