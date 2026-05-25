@@ -10,11 +10,16 @@ logger = logging.getLogger("jug-eared.router")
 
 
 def extract_repository(alert_id: str) -> str:
+    """
+    alert_id format: {source}-{owner}-{repo}-{number}
+    ej: "dependabot-pangoaguirre-learndependabot-12"
+    Retorna "{owner}-{repo}", ej: "pangoaguirre-learndependabot"
+    """
     parts = alert_id.split("-")
     return "-".join(parts[1:-1])
 
 
-async def route_alert(alert: IncomingAlert, repo: InMemoryTeamRepository) -> None:
+async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
     repository = extract_repository(alert.alert_id)
     team = await repo.get_by_repository(repository)
 
@@ -48,7 +53,17 @@ async def route_alert(alert: IncomingAlert, repo: InMemoryTeamRepository) -> Non
         logger.info("Notification sent to discord | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
 
-async def route_rescan(payload: RescanRequest) -> None:
+async def route_rescan(payload: RescanRequest, repo: MongoTeamRepository) -> None:
+    repository = extract_repository(payload.alert_id)
+    team = await repo.get_by_repository(repository)
+
+    if not team:
+        logger.warning("No team found for repository=%s alert_id=%s", repository, payload.alert_id)
+        return
+
     async with httpx.AsyncClient(timeout=10.0) as client:
-        await client.post(f"{settings.parser_url}/{payload.alert_id}")
-        logger.info("Rescan routed to parser | alert_id=%s", payload.alert_id)
+        await client.post(
+            f"{settings.parser_url}/{payload.alert_id}",
+            headers={"X-Github-Token": team.github_token},
+        )
+        logger.info("Rescan routed to parser | alert_id=%s team=%s", payload.alert_id, team.team_id)
