@@ -12,7 +12,12 @@ async def receive_rescan(
     payload: RescanRequest,
     background_tasks: BackgroundTasks,
 ):
-    logger.info("Rescan request received | alert_id=%s user_id=%s guild_id=%s",
-                payload.alert_id, payload.user_id, payload.guild_id)
+    logger.info(
+        "Rescan request accepted | alert_id=%s user_id=%r guild_id=%s action=%s",
+        payload.alert_id,
+        payload.user_id,
+        payload.guild_id,
+        payload.action,
+    )
     background_tasks.add_task(route_rescan, payload)
     return {"status": "received", "alert_id": payload.alert_id}
