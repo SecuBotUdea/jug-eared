@@ -34,9 +34,8 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: 
     }
 
     effective_user_id = user_id or await repo.consume_rescan_user(alert.alert_id)
-    if effective_user_id is not None:
-        secubot_payload["user_id"] = effective_user_id
-    else:
+    secubot_payload["user_id"] = effective_user_id
+    if effective_user_id is None:
         logger.warning("Alert routed without user_id | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
     discord_payload = DiscordNotification(
