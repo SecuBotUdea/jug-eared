@@ -1,7 +1,7 @@
 import logging
 import httpx
 from app.config import settings
-from app.db.repository import InMemoryTeamRepository
+from app.db.repository import MongoTeamRepository
 from app.models.alert import IncomingAlert
 from app.models.notification import DiscordNotification
 from app.models.rescan import RescanRequest
