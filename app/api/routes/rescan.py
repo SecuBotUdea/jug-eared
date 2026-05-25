@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, status
 from app.models.rescan import RescanRequest
 from app.core.router import route_rescan
+from app.db.repository import repo
 
 router = APIRouter(prefix="/rescan", tags=["rescan"])
 logger = logging.getLogger("jug-eared.rescan")
@@ -19,5 +20,5 @@ async def receive_rescan(
         payload.guild_id,
         payload.action,
     )
-    background_tasks.add_task(route_rescan, payload)
+    background_tasks.add_task(route_rescan, payload, repo)
     return {"status": "received", "alert_id": payload.alert_id}
