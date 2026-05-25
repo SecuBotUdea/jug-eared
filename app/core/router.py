@@ -19,7 +19,7 @@ def extract_repository(alert_id: str) -> str:
     return "-".join(parts[1:-1])
 
 
-async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
+async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: str | None = None) -> None:
     repository = extract_repository(alert.alert_id)
     team = await repo.get_by_repository(repository)
 
@@ -32,6 +32,12 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
         "team_id": team.team_id,
         "team_name": team.name,
     }
+
+    effective_user_id = user_id or await repo.consume_rescan_user(alert.alert_id)
+    if effective_user_id is not None:
+        secubot_payload["user_id"] = effective_user_id
+    else:
+        logger.warning("Alert routed without user_id | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
     discord_payload = DiscordNotification(
         alert_id=alert.alert_id,
@@ -60,6 +66,8 @@ async def route_rescan(payload: RescanRequest, repo: MongoTeamRepository) -> Non
     if not team:
         logger.warning("No team found for repository=%s alert_id=%s", repository, payload.alert_id)
         return
+
+    await repo.save_rescan_user(payload.alert_id, payload.user_id, payload.guild_id)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         await client.post(
