@@ -33,5 +33,5 @@ async def receive_rescan(
         payload.user_id,
         payload.guild_id,
     )
-    background_tasks.add_task(route_rescan, payload)
+    background_tasks.add_task(route_rescan, payload, repo)
     return {"status": "received", "alert_id": payload.alert_id}
