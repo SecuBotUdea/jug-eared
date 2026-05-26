@@ -3,6 +3,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from pydantic import ValidationError
 from app.models.rescan import RescanRequest
 from app.core.router import route_rescan
+from app.db.repository import repo
 
 router = APIRouter(prefix="/rescan", tags=["rescan"])
 logger = logging.getLogger("jug-eared.rescan")

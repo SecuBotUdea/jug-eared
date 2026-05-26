@@ -19,7 +19,7 @@ def extract_repository(alert_id: str) -> str:
     return "-".join(parts[1:-1])
 
 
-async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
+async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: str | None = None) -> None:
     repository = extract_repository(alert.alert_id)
     team = await repo.get_by_repository(repository)
 
@@ -32,6 +32,18 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
         "team_id": team.team_id,
         "team_name": team.name,
     }
+
+    effective_user_id = user_id or await repo.consume_rescan_user(alert.alert_id)
+    secubot_payload["user_id"] = effective_user_id
+    logger.info(
+        "Secubot user_id resolution | alert_id=%s incoming_user_id=%r resolved_user_id=%r source=%s",
+        alert.alert_id,
+        user_id,
+        effective_user_id,
+        "arg" if user_id is not None else "rescan_cache" if effective_user_id is not None else "missing",
+    )
+    if effective_user_id is None:
+        logger.warning("Alert routed without user_id | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
     discord_payload = DiscordNotification(
         alert_id=alert.alert_id,
@@ -65,10 +77,19 @@ async def route_rescan(payload: RescanRequest, repo: MongoTeamRepository) -> Non
         return
 
     logger.info(
-        "Rescan forwarding to parser | alert_id=%s team_id=%s repository=%s",
+        "Rescan request received | alert_id=%s user_id=%r guild_id=%s action=%s",
         payload.alert_id,
-        team.team_id,
-        repository,
+        payload.user_id,
+        payload.guild_id,
+        payload.action,
+    )
+
+    await repo.save_rescan_user(payload.alert_id, payload.user_id, payload.guild_id)
+    logger.info(
+        "Rescan user cached | alert_id=%s user_id=%r guild_id=%s",
+        payload.alert_id,
+        payload.user_id,
+        payload.guild_id,
     )
 
     async with httpx.AsyncClient(timeout=10.0) as client:
