@@ -61,7 +61,7 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: 
     logger.debug("Outgoing discord payload | %s", discord_payload.model_dump(mode="json"))
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        await client.post(settings.secubot_url, json=secubot_payload)
+        await client.post(f"{settings.secubot_url}/events/rescan_result", json=secubot_payload)
         logger.info("Alert routed to secubot | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
         await client.post(settings.discord_url, json=discord_payload.model_dump(mode="json"))
