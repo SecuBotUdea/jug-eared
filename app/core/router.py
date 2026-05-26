@@ -45,6 +45,9 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository) -> None:
         team_name=team.name,
     )
 
+    logger.debug("Outgoing secubot payload | %s", secubot_payload)
+    logger.debug("Outgoing discord payload | %s", discord_payload.model_dump(mode="json"))
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         await client.post(settings.secubot_url, json=secubot_payload)
         logger.info("Alert routed to secubot | alert_id=%s team=%s", alert.alert_id, team.team_id)
@@ -60,6 +63,13 @@ async def route_rescan(payload: RescanRequest, repo: MongoTeamRepository) -> Non
     if not team:
         logger.warning("No team found for repository=%s alert_id=%s", repository, payload.alert_id)
         return
+
+    logger.info(
+        "Rescan forwarding to parser | alert_id=%s team_id=%s repository=%s",
+        payload.alert_id,
+        team.team_id,
+        repository,
+    )
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         await client.post(
