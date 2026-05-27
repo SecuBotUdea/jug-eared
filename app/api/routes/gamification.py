@@ -11,6 +11,7 @@ logger = logging.getLogger("jug-eared.gamification")
 async def _notify_discord(payload: GamificationResult) -> None:
     discord_payload = {
         "team_id": payload.team_id,
+        "user_id": payload.user_id,
         "message_content": payload.message,
         "embed_data": {
             "alert_id": payload.alert_id,
