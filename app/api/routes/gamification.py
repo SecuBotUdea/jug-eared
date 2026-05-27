@@ -20,12 +20,28 @@ async def _notify_discord(payload: GamificationResult) -> None:
         },
     }
     try:
+        logger.info(
+            "Sending Discord notification | alert_id=%s team=%s user_id=%r points_awarded=%s points=%s",
+            payload.alert_id,
+            payload.team_id,
+            payload.user_id,
+            payload.points_awarded,
+            payload.points,
+        )
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(settings.discord_url, json=discord_payload)
             response.raise_for_status()
         logger.info(
             "Discord notified | alert_id=%s points_awarded=%s",
             payload.alert_id, payload.points_awarded,
+        )
+    except httpx.HTTPStatusError as exc:
+        logger.exception(
+            "Discord rejected payload | alert_id=%s team=%s status=%s body=%s",
+            payload.alert_id,
+            payload.team_id,
+            exc.response.status_code if exc.response is not None else "unknown",
+            exc.response.text if exc.response is not None else "",
         )
     except Exception:
         logger.exception(
@@ -40,8 +56,10 @@ async def receive_gamification_result(
     background_tasks: BackgroundTasks,
 ):
     logger.info(
-        "Gamification result received | alert_id=%s team=%s points_awarded=%s points=%s",
-        payload.alert_id, payload.team_id, payload.points_awarded, payload.points,
+        "Gamification result received | alert_id=%s team=%s user_id=%r points_awarded=%s points=%s",
+        payload.alert_id, payload.team_id, payload.user_id, payload.points_awarded, payload.points,
     )
+    if not payload.user_id:
+        logger.warning("Gamification payload arrived without user_id | alert_id=%s team=%s", payload.alert_id, payload.team_id)
     background_tasks.add_task(_notify_discord, payload)
     return {"status": "received", "alert_id": payload.alert_id}
