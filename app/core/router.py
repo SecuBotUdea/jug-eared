@@ -34,6 +34,7 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: 
     }
 
     effective_user_id = user_id or await repo.consume_rescan_user(alert.alert_id)
+    is_rescan = effective_user_id is not None
     secubot_payload["user_id"] = effective_user_id
     logger.info(
         "Secubot user_id resolution | alert_id=%s incoming_user_id=%r resolved_user_id=%r source=%s",
@@ -45,27 +46,33 @@ async def route_alert(alert: IncomingAlert, repo: MongoTeamRepository, user_id: 
     if effective_user_id is None:
         logger.warning("Alert routed without user_id | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
-    discord_payload = DiscordNotification(
-        alert_id=alert.alert_id,
-        title=alert.title,
-        severity=alert.severity,
-        status=alert.status,
-        component=alert.component,
-        location=alert.location,
-        source_type=alert.source_type,
-        team_id=team.team_id,
-        team_name=team.name,
-    )
-
-    logger.debug("Outgoing secubot payload | %s", secubot_payload)
-    logger.debug("Outgoing discord payload | %s", discord_payload.model_dump(mode="json"))
+    if not is_rescan:
+        discord_payload = DiscordNotification(
+            alert_id=alert.alert_id,
+            title=alert.title,
+            severity=alert.severity,
+            status=alert.status,
+            component=alert.component,
+            location=alert.location,
+            source_type=alert.source_type,
+            team_id=team.team_id,
+            team_name=team.name,
+        )
+    
+        logger.debug("Outgoing secubot payload | %s", secubot_payload)
+        logger.debug("Outgoing discord payload | %s", discord_payload.model_dump(mode="json"))
+    else:
+        logger.debug("Outgoing secubot payload (rescan) | %s", secubot_payload)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         await client.post(f"{settings.secubot_url}/events/rescan_result", json=secubot_payload)
         logger.info("Alert routed to secubot | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
-        await client.post(settings.discord_url, json=discord_payload.model_dump(mode="json"))
-        logger.info("Notification sent to discord | alert_id=%s team=%s", alert.alert_id, team.team_id)
+        if not is_rescan:
+            await client.post(settings.discord_url, json=discord_payload.model_dump(mode="json"))
+            logger.info("Notification sent to discord | alert_id=%s team=%s", alert.alert_id, team.team_id)
+        else:
+            logger.info("Discord notification skipped (rescan) | alert_id=%s team=%s", alert.alert_id, team.team_id)
 
 
 async def route_rescan(payload: RescanRequest, repo: MongoTeamRepository) -> None:
